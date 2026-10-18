@@ -28,8 +28,8 @@ spec:
           env:
             - name: MLFLOW_TRACKING_URI
               value: "http://mlflow-server:5000"
-            - name: REGISTERED_MODEL_NAME
-              value: "wine-classifier-prod"
+            - name: DATASET_NAME
+              value: "wine"   # change to "iris" to serve the second model instead
             - name: MODEL_STAGE
               value: "Production"
           readinessProbe:

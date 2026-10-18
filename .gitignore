@@ -6,6 +6,6 @@ mlruns/
 mlflow.db
 .env
 .venv/
+venv/
 *.egg-info/
 .DS_Store
-venv/

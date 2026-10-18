@@ -15,6 +15,10 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 COPY src/ ./src/
 
+# Absolute path so preprocess/train/serve always agree on data location,
+# regardless of which directory each stage's ENTRYPOINT runs from.
+ENV PROCESSED_DATA_DIR=/app/data/processed
+
 # ---- Training image: runs preprocessing + training, then exits ----
 FROM base AS train
 WORKDIR /app/src
@@ -27,3 +31,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 ENTRYPOINT ["uvicorn", "serve:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# ---- Web application image: browser interface for the whole pipeline ----
+FROM base AS web
+WORKDIR /app/src
+EXPOSE 8080
+ENTRYPOINT ["uvicorn", "webapp:app", "--host", "0.0.0.0", "--port", "8080"]

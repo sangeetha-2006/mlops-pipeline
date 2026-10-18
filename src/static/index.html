@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MLOps Control Center</title>
+<style>
+:root{
+  --bg:#f4f7f9; --card:#ffffff; --ink:#1a2233; --muted:#5b6b7a; --line:#d8e3e8;
+  --brand:#065a82; --brand-soft:#e3f0f6; --ok:#0f6e56; --ok-bg:#e1f5ee;
+  --warn:#854f0b; --warn-bg:#faeeda; --bad:#a32d2d; --bad-bg:#fcebeb;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f151c; --card:#17212b; --ink:#e6edf3; --muted:#98a6b3; --line:#2b3946;
+    --brand:#5fb3d9; --brand-soft:#16303f; --ok:#5dcaa5; --ok-bg:#0f3a2f;
+    --warn:#fac775; --warn-bg:#3b2a0c; --bad:#f09595; --bad-bg:#401818;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:center;justify-content:space-between}
+header h1{margin:0;font-size:19px}
+header small{color:var(--muted)}
+nav{display:flex;gap:4px;padding:10px 24px 0;flex-wrap:wrap}
+nav button{background:none;border:none;border-bottom:3px solid transparent;color:var(--muted);font:inherit;font-weight:600;padding:8px 14px;cursor:pointer}
+nav button.active{color:var(--brand);border-bottom-color:var(--brand)}
+main{max-width:1050px;margin:0 auto;padding:18px 24px 60px}
+section{display:none}
+section.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+.card h2{margin:0 0 10px;font-size:16px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.muted{color:var(--muted)}
+label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>div{flex:1;min-width:140px}
+button.primary{background:var(--brand);color:#fff;border:none;border-radius:7px;padding:9px 18px;font:inherit;font-weight:600;cursor:pointer}
+button.primary:disabled{opacity:.5;cursor:not-allowed}
+button.ghost{background:var(--brand-soft);color:var(--brand);border:none;border-radius:7px;padding:6px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;margin:2px 4px 2px 0}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700}
+.b-prod{background:var(--ok-bg);color:var(--ok)}
+.b-stage{background:var(--warn-bg);color:var(--warn)}
+.b-arch{background:var(--line);color:var(--muted)}
+.b-none{background:var(--bad-bg);color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+tr.best td{font-weight:700;color:var(--ok)}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 14px}
+.step{flex:1;min-width:110px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;color:var(--muted);background:var(--bg)}
+.step.active{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.step.done{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+.step.failed{border-color:var(--bad);color:var(--bad);background:var(--bad-bg)}
+pre#log{background:#0d1117;color:#c9d1d9;font:12px/1.5 var(--mono);padding:12px;border-radius:8px;height:230px;overflow:auto;margin:0;white-space:pre-wrap}
+.banner{padding:12px 14px;border-radius:8px;font-weight:600;margin-bottom:12px}
+.banner.ok{background:var(--ok-bg);color:var(--ok)}
+.banner.warn{background:var(--warn-bg);color:var(--warn)}
+.banner.bad{background:var(--bad-bg);color:var(--bad)}
+.bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.bar>span{display:block;height:100%;background:var(--brand)}
+.probrow{display:grid;grid-template-columns:110px 1fr 56px;gap:10px;align-items:center;margin:6px 0;font-size:14px}
+.big{font-size:26px;font-weight:700;margin:2px 0}
+.stat{font-size:26px;font-weight:700}
+.feat{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.hint{display:block;font-weight:400;color:var(--muted);font-size:12px;min-height:18px}
+#toast{position:fixed;right:20px;bottom:20px;max-width:380px;padding:12px 16px;border-radius:8px;font-weight:600;display:none;z-index:9}
+#toast.bad{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad)}
+#toast.ok{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok)}
+a{color:var(--brand)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>MLOps Control Center</h1>
+    <small>Augmented machine learning model deployment: train, register, promote, predict, monitor</small>
+  </div>
+  <small id="cfg"></small>
+</header>
+<nav id="tabs">
+  <button data-tab="overview" class="active">Overview</button>
+  <button data-tab="train">Train</button>
+  <button data-tab="predict">Predict</button>
+  <button data-tab="registry">Registry</button>
+  <button data-tab="monitor">Monitor</button>
+</nav>
+<main>
+
+<section id="overview" class="active">
+  <div class="card">
+    <h2>How the pipeline works</h2>
+    <p class="muted" style="margin:0">
+      Preprocess the data, augment the training set with Gaussian noise, train three models, register the best one,
+      then let the promotion gate compare it with the model already in Production. A new model goes live only if its
+      weighted F1-score is higher.
+    </p>
+  </div>
+  <div class="grid" id="cards"></div>
+</section>
+
+<section id="train">
+  <div class="card">
+    <h2>Run the pipeline</h2>
+    <div class="row">
+      <div><label for="t-dataset">Dataset</label><select id="t-dataset"></select></div>
+      <div><label for="t-aug">Augmentation copies <span class="hint">(0 turns augmentation off)</span></label>
+        <input id="t-aug" type="number" min="0" max="10" step="1" value="2"></div>
+      <div><label for="t-noise">Noise level <span class="hint">(standard deviation)</span></label>
+        <input id="t-noise" type="number" min="0" max="0.5" step="0.01" value="0.03"></div>
+    </div>
+    <p style="margin:14px 0 0"><button class="primary" id="t-run">Run pipeline</button></p>
+  </div>
+  <div class="card" id="job-card" style="display:none">
+    <h2>Progress <span class="badge b-stage" id="job-status"></span></h2>
+    <div class="steps" id="steps"></div>
+    <pre id="log"></pre>
+    <div id="result" style="margin-top:14px"></div>
+  </div>
+</section>
+
+<section id="predict">
+  <div class="card">
+    <h2>Get a prediction from the Production model</h2>
+    <div class="row">
+      <div><label for="p-dataset">Dataset</label><select id="p-dataset"></select></div>
+      <div id="p-model" class="muted" style="align-self:end;padding-bottom:8px"></div>
+    </div>
+    <p style="margin:10px 0 0"><span class="muted">Fill with a real example:</span> <span id="p-examples"></span></p>
+    <div class="feat" id="p-form"></div>
+    <p style="margin:14px 0 0"><button class="primary" id="p-run">Predict</button></p>
+  </div>
+  <div class="card" id="p-result-card" style="display:none"><div id="p-result"></div></div>
+</section>
+
+<section id="registry">
+  <div id="reg"></div>
+</section>
+
+<section id="monitor">
+  <div class="grid" id="mon-top"></div>
+  <div class="card">
+    <h2>Recent predictions</h2>
+    <div id="mon-recent" class="muted">No predictions yet.</div>
+  </div>
+  <p class="muted">Prometheus format: <a href="/metrics" target="_blank">/metrics</a> &middot;
+    API documentation: <a href="/docs" target="_blank">/docs</a></p>
+</section>
+
+</main>
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const STEP_NAMES = {preprocess:"1. Preprocess", augment:"2. Augment", train:"3. Train models", register:"4. Register", gate:"5. Promotion gate"};
+const STEP_KEYS = Object.keys(STEP_NAMES);
+let datasets = [], jobTimer = null, monTimer = null, tab = "overview";
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  let body = null;
+  try { body = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    const d = body && body.detail;
+    throw new Error(typeof d === "string" ? d : (d ? JSON.stringify(d) : "Request failed (" + res.status + ")"));
+  }
+  return body;
+}
+function toast(msg, kind) {
+  const t = $("toast"); t.textContent = msg; t.className = kind || "bad"; t.style.display = "block";
+  clearTimeout(toast.h); toast.h = setTimeout(() => { t.style.display = "none"; }, 6000);
+}
+const fmt = (x, d = 4) => (x === null || x === undefined) ? "-" : Number(x).toFixed(d);
+const when = (s) => new Date(s * 1000).toLocaleString();
+const stageBadge = (s) => ({Production:"b-prod", Staging:"b-stage", Archived:"b-arch"}[s] || "b-arch");
+
+/* ---------- tabs ---------- */
+function showTab(name) {
+  tab = name;
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll("main section").forEach((s) => s.classList.toggle("active", s.id === name));
+  clearInterval(monTimer);
+  if (name === "overview") loadOverview();
+  if (name === "registry") loadRegistry();
+  if (name === "predict") loadModelNote();
+  if (name === "monitor") { loadStats(); monTimer = setInterval(loadStats, 3000); }
+}
+$("tabs").addEventListener("click", (e) => { if (e.target.dataset.tab) showTab(e.target.dataset.tab); });
+
+/* ---------- overview ---------- */
+async function loadOverview() {
+  try {
+    const data = await api("/api/overview");
+    $("cards").innerHTML = data.datasets.map((d) => {
+      const p = d.production;
+      const body = p
+        ? `<span class="badge b-prod">Production v${p.version}</span>
+           <p class="big">${esc(p.model_type)}</p>
+           <div class="muted">Weighted F1 ${fmt(p.f1)}</div>
+           <div class="bar" style="margin:8px 0"><span style="width:${Math.round((p.f1 || 0) * 100)}%"></span></div>
+           <div class="muted">${d.versions} version(s) registered &middot; trained ${when(p.created)}</div>`
+        : `<span class="badge b-none">No Production model</span>
+           <p class="muted">Train this dataset to create its first model.</p>`;
+      return `<div class="card"><h2>${esc(d.dataset)}</h2>${body}
+        <p style="margin:12px 0 0"><button class="ghost" onclick="goTrain('${esc(d.dataset)}')">Train now</button>
+        ${p ? `<button class="ghost" onclick="goPredict('${esc(d.dataset)}')">Predict</button>` : ""}</p></div>`;
+    }).join("");
+    if (data.running_job && !jobTimer) { showTab("train"); watchJob(data.running_job); }
+  } catch (e) { toast(e.message); }
+}
+function goTrain(ds) { $("t-dataset").value = ds; showTab("train"); }
+function goPredict(ds) { $("p-dataset").value = ds; buildForm(); showTab("predict"); }
+
+/* ---------- train ---------- */
+function renderSteps(stage, status) {
+  const idx = STEP_KEYS.indexOf(stage);
+  $("steps").innerHTML = STEP_KEYS.map((k, i) => {
+    let cls = "";
+    if (status === "done") cls = "done";
+    else if (i < idx) cls = "done";
+    else if (i === idx) cls = status === "failed" ? "failed" : "active";
+    return `<div class="step ${cls}">${STEP_NAMES[k]}</div>`;
+  }).join("");
+}
+function renderResult(job) {
+  if (job.status === "failed") {
+    $("result").innerHTML = `<div class="banner bad">${esc(job.error)}</div>`;
+    return;
+  }
+  if (job.status !== "done" || !job.result) { $("result").innerHTML = ""; return; }
+  const r = job.result;
+  const banner = r.promoted
+    ? `<div class="banner ok">Promoted version ${r.version} to Production (weighted F1 ${fmt(r.best_f1)}, previous ${r.previous_f1 === null ? "none" : fmt(r.previous_f1)}).</div>`
+    : `<div class="banner warn">Kept the existing Production model. The new candidate (F1 ${fmt(r.best_f1)}) did not beat it (F1 ${fmt(r.previous_f1)}). Version ${r.version} stays in Staging.</div>`;
+  const rows = r.candidates.map((c) => `<tr class="${c.model === r.best_model ? "best" : ""}">
+      <td>${esc(c.model)}${c.model === r.best_model ? " (best)" : ""}</td><td>${fmt(c.accuracy)}</td>
+      <td>${fmt(c.f1_weighted)}</td><td>${fmt(c.precision_weighted)}</td><td>${fmt(c.recall_weighted)}</td></tr>`).join("");
+  $("result").innerHTML = banner +
+    `<p class="muted" style="margin:0 0 8px">Training set: ${r.train_size_before} &rarr; ${r.train_size_after} samples
+      (augmentation copies: ${r.augment_factor}, noise ${r.noise_std})</p>
+     <table><tr><th>Model</th><th>Accuracy</th><th>F1</th><th>Precision</th><th>Recall</th></tr>${rows}</table>
+     <p class="muted" style="margin:8px 0 0">Scores are on the held-out test split of the ${esc(r.dataset)} dataset.</p>`;
+}
+async function watchJob(id) {
+  $("job-card").style.display = "block";
+  $("t-run").disabled = true;
+  clearInterval(jobTimer); jobTimer = null;
+  const tick = async () => {
+    try {
+      const job = await api("/api/jobs/" + id);
+      $("job-status").textContent = job.status;
+      $("job-status").className = "badge " + (job.status === "done" ? "b-prod" : job.status === "failed" ? "b-none" : "b-stage");
+      renderSteps(job.stage, job.status);
+      const log = $("log"), atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
+      log.textContent = job.log.join("\n");
+      if (atEnd) log.scrollTop = log.scrollHeight;
+      renderResult(job);
+      const finished = job.status === "done" || job.status === "failed";
+      if (finished) {
+        clearInterval(jobTimer); jobTimer = null; $("t-run").disabled = false;
+        if (job.status === "done") toast("Pipeline finished.", "ok");
+      }
+      return finished;
+    } catch (e) {
+      clearInterval(jobTimer); jobTimer = null; $("t-run").disabled = false; toast(e.message);
+      return true;
+    }
+  };
+  if (!(await tick())) jobTimer = setInterval(tick, 1000);
+}
+$("t-run").addEventListener("click", async () => {
+  $("t-run").disabled = true;
+  try {
+    const out = await api("/api/train", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        dataset: $("t-dataset").value,
+        augment_factor: parseInt($("t-aug").value || "0", 10),
+        noise_std: parseFloat($("t-noise").value || "0"),
+      }),
+    });
+    $("log").textContent = ""; $("result").innerHTML = "";
+    watchJob(out.job_id);
+  } catch (e) { $("t-run").disabled = false; toast(e.message); }
+});
+
+/* ---------- predict ---------- */
+function currentDataset() { return datasets.find((d) => d.name === $("p-dataset").value); }
+function buildForm() {
+  const d = currentDataset(); if (!d) return;
+  $("p-form").innerHTML = d.features.map((f, i) => {
+    const s = d.stats[f];
+    return `<div><label for="f${i}">${esc(f)} <span class="hint">${s.min} to ${s.max}</span></label>
+      <input id="f${i}" type="number" step="any" placeholder="${s.mean}"></div>`;
+  }).join("");
+  $("p-examples").innerHTML = d.examples.map((ex, i) =>
+    `<button class="ghost" onclick="fillExample(${i})">${esc(ex.label)}</button>`).join("");
+  $("p-result-card").style.display = "none";
+  loadModelNote();
+}
+function fillExample(i) {
+  currentDataset().examples[i].values.forEach((v, j) => { $("f" + j).value = v; });
+}
+async function loadModelNote() {
+  const ds = $("p-dataset").value; if (!ds) return;
+  try {
+    const reg = await api("/api/registry/" + ds);
+    const prod = reg.versions.find((v) => v.stage === "Production");
+    $("p-model").innerHTML = prod
+      ? `Serving <b>${esc(prod.model_type)}</b>, version ${prod.version} (<span class="badge b-prod">Production</span>)`
+      : `<span class="badge b-none">No Production model</span> Train this dataset first.`;
+  } catch (e) { $("p-model").textContent = ""; }
+}
+$("p-dataset").addEventListener("change", buildForm);
+$("p-run").addEventListener("click", async () => {
+  const d = currentDataset();
+  const values = d.features.map((_, i) => parseFloat($("f" + i).value));
+  if (values.some((v) => Number.isNaN(v))) { toast("Fill in every value first, or use one of the examples."); return; }
+  try {
+    const r = await api("/api/predict", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({dataset: d.name, features: values}),
+    });
+    const top = Math.max(...r.probabilities.map((p) => p.probability));
+    $("p-result").innerHTML = `
+      <div class="muted">Predicted class</div><div class="big">${esc(r.label)}</div>
+      <div class="muted" style="margin-bottom:10px">${esc(r.model_type)}, version ${r.model_version}, confidence ${fmt(top, 3)}</div>
+      ${r.probabilities.map((p) => `<div class="probrow"><span>${esc(p.label)}</span>
+        <div class="bar"><span style="width:${Math.round(p.probability * 100)}%"></span></div>
+        <span>${fmt(p.probability, 3)}</span></div>`).join("")}
+      ${r.notes.map((n) => `<div class="banner warn" style="margin-top:10px">${esc(n)}</div>`).join("")}`;
+    $("p-result-card").style.display = "block";
+  } catch (e) { toast(e.message); }
+});
+
+/* ---------- registry ---------- */
+async function loadRegistry() {
+  try {
+    const all = await Promise.all(datasets.map((d) => api("/api/registry/" + d.name)));
+    $("reg").innerHTML = all.map((r) => {
+      const rows = r.versions.map((v) => `<tr><td>v${v.version}</td>
+        <td><span class="badge ${stageBadge(v.stage)}">${esc(v.stage)}</span></td><td>${esc(v.model_type)}</td>
+        <td>${fmt(v.f1)}</td><td>${fmt(v.accuracy)}</td><td>${esc(v.augment_factor)}</td>
+        <td>${when(v.created)}</td><td class="muted">${esc(v.run_id)}</td></tr>`).join("");
+      return `<div class="card"><h2>${esc(r.model_name)}</h2>` + (rows
+        ? `<table><tr><th>Version</th><th>Stage</th><th>Model</th><th>F1</th><th>Accuracy</th><th>Aug. copies</th><th>Created</th><th>Run</th></tr>${rows}</table>`
+        : `<p class="muted">Nothing registered yet.</p>`) + `</div>`;
+    }).join("");
+  } catch (e) { toast(e.message); }
+}
+
+/* ---------- monitor ---------- */
+async function loadStats() {
+  try {
+    const s = await api("/api/stats");
+    const box = (label, val) => `<div class="card"><div class="muted">${label}</div><div class="stat">${val}</div></div>`;
+    $("mon-top").innerHTML = box("Prediction requests", s.total) + box("Errors", s.errors) +
+      box("Average latency", s.avg_ms === null ? "-" : s.avg_ms + " ms") +
+      box("95th percentile", s.p95_ms === null ? "-" : s.p95_ms + " ms");
+    $("mon-recent").innerHTML = s.recent.length
+      ? `<table><tr><th>Time</th><th>Dataset</th><th>Result</th><th>Confidence</th><th>Model</th></tr>` +
+        s.recent.map((r) => `<tr><td>${when(r.time)}</td><td>${esc(r.dataset)}</td><td>${esc(r.label)}</td>
+          <td>${fmt(r.confidence, 3)}</td><td>v${r.model_version}</td></tr>`).join("") + `</table>`
+      : "No predictions yet.";
+  } catch (e) { /* ignore transient errors while polling */ }
+}
+
+/* ---------- start ---------- */
+(async function init() {
+  try {
+    const [cfg, ds] = await Promise.all([api("/api/config"), api("/api/datasets")]);
+    datasets = ds;
+    $("cfg").textContent = "MLflow store: " + cfg.tracking_uri;
+    const opts = ds.map((d) => `<option value="${esc(d.name)}">${esc(d.name)} (${d.n_features} features)</option>`).join("");
+    $("t-dataset").innerHTML = opts; $("p-dataset").innerHTML = opts;
+    buildForm();
+    loadOverview();
+  } catch (e) { toast(e.message); }
+})();
+</script>
+</body>
+</html>

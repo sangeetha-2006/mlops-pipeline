@@ -1,12 +1,10 @@
-version: "3.9"
-
 services:
-  # Tracking server + model registry backend
+  # Shared tracking server + model registry backend for BOTH models
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.14.1
     container_name: mlflow-server
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       - mlflow_data:/mlflow
     command: >
@@ -16,22 +14,23 @@ services:
       --host 0.0.0.0
       --port 5000
     healthcheck:
-         test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/health')\" 2>/dev/null || python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/health')\""]
-         interval: 10s
-         timeout: 5s
-         retries: 8
-         start_period: 30s
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/health')\" 2>/dev/null || python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
 
-  # One-shot training job: preprocess -> train -> register -> promote
-  train:
+  # ---------------- Wine model ----------------
+  train-wine:
     build:
       context: .
       target: train
-    container_name: mlops-train
+    container_name: mlops-train-wine
     depends_on:
       mlflow:
         condition: service_healthy
     environment:
+      DATASET_NAME: wine
       MLFLOW_TRACKING_URI: http://mlflow:5000
       MLFLOW_EXPERIMENT_NAME: wine-classifier
       REGISTERED_MODEL_NAME: wine-classifier-prod
@@ -40,24 +39,85 @@ services:
     volumes:
       - ./data:/app/data
 
-  # Long-running serving API
-  serve:
+  serve-wine:
     build:
       context: .
       target: serve
-    container_name: mlops-serve
+    container_name: mlops-serve-wine
     depends_on:
-      - train
+      train-wine:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     environment:
+      DATASET_NAME: wine
       MLFLOW_TRACKING_URI: http://mlflow:5000
       REGISTERED_MODEL_NAME: wine-classifier-prod
       MODEL_STAGE: Production
-      SCALER_PATH: /app/data/processed/scaler.joblib
+      SCALER_PATH: /app/data/processed/wine/scaler.joblib
+      N_FEATURES: "13"
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+
+  # ---------------- Iris model ----------------
+  train-iris:
+    build:
+      context: .
+      target: train
+    container_name: mlops-train-iris
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    environment:
+      DATASET_NAME: iris
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_EXPERIMENT_NAME: iris-classifier
+      REGISTERED_MODEL_NAME: iris-classifier-prod
+      AUGMENT_FACTOR: "2"
+      NOISE_STD: "0.03"
+    volumes:
+      - ./data:/app/data
+
+  serve-iris:
+    build:
+      context: .
+      target: serve
+    container_name: mlops-serve-iris
+    depends_on:
+      train-iris:
+        condition: service_completed_successfully
+    ports:
+      - "8002:8000"
+    environment:
+      DATASET_NAME: iris
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      REGISTERED_MODEL_NAME: iris-classifier-prod
+      MODEL_STAGE: Production
+      SCALER_PATH: /app/data/processed/iris/scaler.joblib
+      N_FEATURES: "4"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # ---------------- Web application (optional) ----------------
+  # Start with:  docker compose --profile web up --build
+  # Then open http://localhost:8080
+  web:
+    profiles: ["web"]
+    build:
+      context: .
+      target: web
+    container_name: mlops-web
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ./data:/app/data
 
   # Metrics scraping (optional, for local observability demo)
   prometheus:
@@ -68,7 +128,8 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     depends_on:
-      - serve
+      - serve-wine
+      - serve-iris
 
 volumes:
   mlflow_data:

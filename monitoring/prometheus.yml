@@ -2,6 +2,10 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: "mlops-serving-api"
+  - job_name: "mlops-serving-wine"
     static_configs:
-      - targets: ["serve:8000"]
+      - targets: ["serve-wine:8000"]
+
+  - job_name: "mlops-serving-iris"
+    static_configs:
+      - targets: ["serve-iris:8000"]

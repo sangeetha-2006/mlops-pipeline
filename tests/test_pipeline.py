@@ -5,15 +5,21 @@ These are also what the CI workflow runs before building/pushing an image.
 import sys
 import os
 import numpy as np
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from preprocess import load_raw_data, clean_data, split_and_scale  # noqa: E402
+from preprocess import load_raw_data, clean_data, split_and_scale, DATASET_LOADERS  # noqa: E402
 from train import augment, get_candidate_models, evaluate  # noqa: E402
 
 
-def test_load_raw_data_shape():
-    df = load_raw_data()
+@pytest.mark.parametrize("dataset_name", ["wine", "iris"])
+def test_load_raw_data_shape(monkeypatch, dataset_name):
+    monkeypatch.setenv("DATASET_NAME", dataset_name)
+    import importlib
+    import preprocess
+    importlib.reload(preprocess)
+    df = preprocess.load_raw_data()
     assert "target" in df.columns
     assert len(df) > 0
 
@@ -58,3 +64,8 @@ def test_candidate_models_train_and_evaluate():
         metrics = evaluate(model, X_test, y_test)
         assert 0.0 <= metrics["accuracy"] <= 1.0
         assert "f1_weighted" in metrics
+
+
+def test_dataset_loaders_registered():
+    assert "wine" in DATASET_LOADERS
+    assert "iris" in DATASET_LOADERS

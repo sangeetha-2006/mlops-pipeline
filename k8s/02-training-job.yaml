@@ -1,3 +1,9 @@
+# One-off training run. Applied directly:
+#   kubectl apply -f k8s/02-training-job.yaml
+# Uses the locally built image (mlops-pipeline-train:latest), which Docker
+# Desktop's built-in Kubernetes shares directly from the local Docker cache —
+# no registry push needed. If you're on a different cluster (minikube, a
+# cloud cluster), replace `image` below with a pushed registry image instead.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -15,10 +21,8 @@ spec:
           env:
             - name: MLFLOW_TRACKING_URI
               value: "http://mlflow-server:5000"
-            - name: MLFLOW_EXPERIMENT_NAME
-              value: "wine-classifier"
-            - name: REGISTERED_MODEL_NAME
-              value: "wine-classifier-prod"
+            - name: DATASET_NAME
+              value: "wine"   # change to "iris" to train/register the second model
             - name: AUGMENT_FACTOR
               value: "2"
             - name: NOISE_STD

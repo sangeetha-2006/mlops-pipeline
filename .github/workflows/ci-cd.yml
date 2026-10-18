@@ -11,7 +11,6 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-  # ---------- 1. Lint + unit test every push/PR ----------
   test:
     runs-on: ubuntu-latest
     steps:
@@ -41,7 +40,6 @@ jobs:
           name: test-results
           path: test-results.xml
 
-  # ---------- 2. Build & push train/serve images (main branch only) ----------
   build-and-push:
     needs: test
     if: github.ref == 'refs/heads/main'
@@ -79,7 +77,6 @@ jobs:
             ${{ env.IMAGE_REGISTRY }}/mlops-pipeline:serve-${{ env.IMAGE_TAG }}
             ${{ env.IMAGE_REGISTRY }}/mlops-pipeline:serve-latest
 
-  # ---------- 3. Run training job on the cluster, register + promote model ----------
   train-and-register:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -97,14 +94,10 @@ jobs:
       - name: Apply training Job
         run: |
           export KUBECONFIG=$HOME/kubeconfig
-          sed -e "s|\${IMAGE_REGISTRY}|${{ env.IMAGE_REGISTRY }}|g" \
-              -e "s|\${IMAGE_TAG}|${{ env.IMAGE_TAG }}|g" \
-              k8s/02-training-job.yaml > /tmp/training-job.yaml
           kubectl delete job model-training -n mlops --ignore-not-found
-          kubectl apply -f /tmp/training-job.yaml
+          kubectl apply -f k8s/02-training-job.yaml
           kubectl wait --for=condition=complete job/model-training -n mlops --timeout=600s
 
-  # ---------- 4. Roll out the new serving image (only if training succeeded) ----------
   deploy:
     needs: train-and-register
     runs-on: ubuntu-latest
@@ -126,10 +119,7 @@ jobs:
           for f in k8s/00-namespace.yaml k8s/01-mlflow.yaml k8s/04-ingress.yaml k8s/05-retrain-cronjob.yaml; do
             kubectl apply -f "$f"
           done
-          sed -e "s|\${IMAGE_REGISTRY}|${{ env.IMAGE_REGISTRY }}|g" \
-              -e "s|\${IMAGE_TAG}|${{ env.IMAGE_TAG }}|g" \
-              k8s/03-serving-deployment.yaml > /tmp/serving-deployment.yaml
-          kubectl apply -f /tmp/serving-deployment.yaml
+          kubectl apply -f k8s/03-serving-deployment.yaml
           kubectl rollout status deployment/model-serving -n mlops --timeout=300s
 
       - name: Smoke test the deployed API
